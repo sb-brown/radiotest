@@ -1,0 +1,124 @@
+#!/bin/bash
+################################################################################
+# Help and Arguments                                                           #
+################################################################################
+
+Help()
+{
+   # Display Help
+   echo
+   echo "Script to display strongest 2.4g and 5g radio signal per room"
+   echo "Results export to CSV in your Downloads folder"
+   echo 
+   echo "Syntax: radiotest [-c|s|h]"
+   echo "options:"
+   echo "-c or --client   Input client or site name"
+   echo "-s or --ssid     Input WIFI SSID."
+   echo "-h or --help     Print this Help."
+   echo
+}
+
+# Arguments
+if [ "$1" = "" ]; then
+	echo
+	echo "Please specify arguments"    
+	exit 0
+else
+	while [ True ]; do
+	if [ "$1" = "--client" -o "$1" = "-c" -o "$1" = "-C" ]; then
+    		clientname=$2
+    		shift 2
+	elif [ "$1" = "--ssid" -o "$1" = "-s" -o "$1" = "-S" ]; then
+    		ssidscan=$2
+    		shift 2
+	elif [ "$1" = "--help" -o "$1" = "-h" -o "$1" = "-H" ]; then
+    		Help
+    		exit 0
+	else
+    		break
+	fi
+	done
+fi
+
+################################################################################
+################################################################################
+# Main program                                                                 #
+################################################################################
+################################################################################
+
+
+# WIFI scan functions
+wifi24func() {
+	if [ "${wifiArray[$arrpick]}" -gt "$lowest24value" ];   
+		then
+			lowest24value="${wifiArray[$arrpick]}"
+			lowest24mac="${wifiArray[$arrpick-1]}"
+	fi
+}
+
+wifi5func() {
+	if [ "${wifiArray[$arrpick]}" -gt "$lowest5value" ];   
+		then
+			lowest5value="${wifiArray[$arrpick]}"
+			lowest5mac="${wifiArray[$arrpick-1]}"
+	fi
+}
+
+# Variable reset function
+varresetfunc() {
+	
+	arrpick=2
+	i=0
+	lowest24value=-100
+	lowest5value=-100
+	lowest5mac="none detected"
+	lowest24mac="none detected"
+}
+
+
+# Initial variable set
+exit=x
+cd=7
+
+
+# Create CSV file with column names
+echo "Room " , "Band" , "Rssi" , "BSSID" >> /Users/$USER/Downloads/$clientname.csv 
+
+
+while [ True ]; do 
+	clear
+	read -p 'Input Room name (press x to exit): ' room
+	
+	if [[ $room != $exit ]]; then
+	
+		varresetfunc
+
+		wifiArray=( $(airport -s | grep -i $ssidscan) )
+
+		count="${#wifiArray[@]}"
+
+		count="$((count / cd))"
+
+		while [ $i -lt $count ]; do
+			case ${wifiArray[$arrpick+1]} in
+		
+				[1-9] | 10 | 11) wifi24func ;;
+						
+				*) wifi5func ;;
+			
+			esac
+			arrpick="$arrpick + 7"
+			((i++))
+		done
+	
+
+		# Output results to file
+		echo $room >> /Users/$USER/Downloads/$clientname.csv
+		echo  , 2g , $lowest24value , $lowest24mac >> /Users/$USER/Downloads/$clientname.csv 
+		echo  , 5g , $lowest5value , $lowest5mac >> /Users/$USER/Downloads/$clientname.csv 
+	
+		else
+			break
+	fi
+	
+done
